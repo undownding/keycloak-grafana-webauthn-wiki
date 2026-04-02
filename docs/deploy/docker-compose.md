@@ -94,7 +94,7 @@ docker-compose exec grafana curl -f http://localhost:3000/api/health
 | 服务 | URL | 说明 |
 |------|-----|------|
 | Keycloak | https://keycloak.example.com:8443 | 身份提供商 |
-| Grafana | http://localhost:3000 | 监控平台（通过 Nginx 代理到 443） |
+| Grafana | `http://localhost:3000` | 监控平台（通过 Nginx 代理到 443） |
 | Nginx | https://grafana.example.com | 反向代理入口 |
 
 ## 初始配置

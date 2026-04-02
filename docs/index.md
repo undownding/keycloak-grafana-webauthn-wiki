@@ -1,13 +1,13 @@
-# https://vitepress.dev/reference/default-theme-home-page
+---
 layout: home
 
 hero:
   name: "Keycloak + Grafana"
   text: "WebAuthn/Passkey 配置指南"
   tagline: 完整的企业级身份认证与监控系统部署文档
-  image:
-    src: /logo.svg
-    alt: Keycloak Grafana WebAuthn
+#  image:
+#    src: /logo.svg
+#    alt: Keycloak Grafana WebAuthn
   actions:
     - theme: brand
       text: 快速开始
@@ -38,7 +38,6 @@ features:
   - icon: 🔧
     title: 故障排除
     details: 常见问题解决方案和调试技巧
-
 ---
 
 ## 项目简介
@@ -72,4 +71,4 @@ features:
 
 ## 许可证
 
-MIT License - 详见 [LICENSE](./LICENSE) 文件
+MIT License - 详见 [LICENSE](https://github.com/undownding/keycloak-grafana-webauthn-wiki/blob/main/LICENSE) 文件
