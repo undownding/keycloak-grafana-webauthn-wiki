@@ -2,110 +2,63 @@
 
 ## 系统架构
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         用户 (浏览器)                            │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │ HTTPS
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      反向代理 (Nginx/Traefik)                    │
-│                     SSL 终止 + 负载均衡                          │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              │                               │
-              ▼                               ▼
-┌─────────────────────────┐      ┌─────────────────────────┐
-│       Keycloak          │      │        Grafana          │
-│    (身份提供商)          │      │     (监控平台)          │
-│                         │      │                         │
-│  ┌─────────────────┐    │      │  ┌─────────────────┐    │
-│  │   WebAuthn      │    │      │  │   Dashboard     │    │
-│  │   Passkey       │    │      │  │   Alerting      │    │
-│  │   OAuth2/OIDC   │◄───┼──────┼──┤   OIDC Client   │    │
-│  │   LDAP          │    │      │  └─────────────────┘    │
-│  └─────────────────┘    │      └─────────────────────────┘
-│                         │
-│  ┌─────────────────┐    │
-│  │   PostgreSQL    │    │
-│  │   (数据存储)     │    │
-│  └─────────────────┘    │
-└─────────────────────────┘
+```mermaid
+graph TD
+    User([用户/浏览器]) -->|HTTPS| Nginx["反向代理 (Nginx/Traefik)\nSSL终止 + 负载均衡"]
+
+    subgraph KC_Box ["Keycloak (身份提供商)"]
+        KC["WebAuthn / Passkey\nOAuth2/OIDC / LDAP"]
+        PG[(PostgreSQL\n数据存储)]
+    end
+
+    subgraph GF_Box ["Grafana (监控平台)"]
+        GF["Dashboard / Alerting\nOIDC Client"]
+    end
+
+    Nginx --> KC_Box
+    Nginx --> GF_Box
+    GF_Box -->|OIDC/OAuth2| KC_Box
 ```
 
 ## 认证流程
 
 ### WebAuthn 2FA 流程
 
-```
-┌──────┐          ┌──────────┐          ┌──────────┐          ┌──────────┐
-│ 用户  │          │  Grafana │          │ Keycloak │          │  YubiKey │
-└──┬───┘          └────┬─────┘          └────┬─────┘          └────┬─────┘
-   │                   │                     │                     │
-   │  1. 访问 Grafana  │                     │                     │
-   │──────────────────>│                     │                     │
-   │                   │                     │                     │
-   │                   │  2. 重定向到 Keycloak│                     │
-   │                   │────────────────────>│                     │
-   │                   │                     │                     │
-   │  3. 登录页面       │                     │                     │
-   │<──────────────────│                     │                     │
-   │                   │                     │                     │
-   │  4. 输入用户名密码 │                     │                     │
-   │──────────────────>│                     │                     │
-   │                   │                     │                     │
-   │                   │                     │  5. 验证密码         │
-   │                   │                     │────────────────────>│
-   │                   │                     │                     │
-   │  6. 要求 WebAuthn │                     │                     │
-   │<──────────────────│                     │                     │
-   │                   │                     │                     │
-   │  7. 插入 YubiKey   │                     │                     │
-   │──────────────────>│                     │                     │
-   │                   │                     │                     │
-   │                   │                     │  8. WebAuthn 签名    │
-   │                   │                     │<────────────────────│
-   │                   │                     │                     │
-   │                   │  9. 返回 Token      │                     │
-   │                   │<────────────────────│                     │
-   │                   │                     │                     │
-   │  10. 登录成功      │                     │                     │
-   │<──────────────────│                     │                     │
-   │                   │                     │                     │
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant Grafana
+    participant Keycloak
+    participant YubiKey
+
+    User->>Grafana: 1. 访问 Grafana
+    Grafana->>Keycloak: 2. 重定向到 Keycloak
+    Keycloak-->>User: 3. 登录页面
+    User->>Keycloak: 4. 输入用户名密码
+    Keycloak-->>User: 5. 验证密码，要求 WebAuthn
+    User->>YubiKey: 6. 插入/触碰 YubiKey
+    YubiKey-->>Keycloak: 7. WebAuthn 签名
+    Keycloak-->>Grafana: 8. 返回 Token
+    Grafana-->>User: 9. 登录成功
 ```
 
 ### Passwordless 流程
 
-```
-┌──────┐          ┌──────────┐          ┌──────────┐          ┌──────────┐
-│ 用户  │          │  Grafana │          │ Keycloak │          │ Passkey  │
-└──┬───┘          └────┬─────┘          └────┬─────┘          └────┬─────┘
-   │                   │                     │                     │
-   │  1. 访问 Grafana  │                     │                     │
-   │──────────────────>│                     │                     │
-   │                   │                     │                     │
-   │                   │  2. 重定向到 Keycloak│                     │
-   │                   │────────────────────>│                     │
-   │                   │                     │                     │
-   │  3. 输入用户名     │                     │                     │
-   │──────────────────>│                     │                     │
-   │                   │                     │                     │
-   │  4. 选择 Passkey   │                     │                     │
-   │<──────────────────│                     │                     │
-   │                   │                     │                     │
-   │  5. 生物识别/密码  │                     │                     │
-   │──────────────────>│                     │                     │
-   │                   │                     │                     │
-   │                   │                     │  6. Passkey 验证     │
-   │                   │                     │<────────────────────│
-   │                   │                     │                     │
-   │                   │  7. 返回 Token      │                     │
-   │                   │<────────────────────│                     │
-   │                   │                     │                     │
-   │  8. 登录成功      │                     │                     │
-   │<──────────────────│                     │                     │
-   │                   │                     │                     │
+```mermaid
+sequenceDiagram
+    participant User as 用户
+    participant Grafana
+    participant Keycloak
+    participant Passkey
+
+    User->>Grafana: 1. 访问 Grafana
+    Grafana->>Keycloak: 2. 重定向到 Keycloak
+    User->>Keycloak: 3. 输入用户名
+    Keycloak-->>User: 4. 提示选择 Passkey
+    User->>Passkey: 5. 生物识别/PIN 验证
+    Passkey-->>Keycloak: 6. Passkey 断言响应
+    Keycloak-->>Grafana: 7. 返回 Token
+    Grafana-->>User: 8. 登录成功
 ```
 
 ## 组件说明
@@ -158,25 +111,12 @@
 
 ### 水平扩展
 
-```
-                    ┌─────────────┐
-                    │   Load      │
-                    │  Balancer   │
-                    └──────┬──────┘
-                           │
-           ┌───────────────┼───────────────┐
-           │               │               │
-           ▼               ▼               ▼
-    ┌────────────┐  ┌────────────┐  ┌────────────┐
-    │ Keycloak 1 │  │ Keycloak 2 │  │ Keycloak 3 │
-    └────────────┘  └────────────┘  └────────────┘
-           │               │               │
-           └───────────────┼───────────────┘
-                           │
-                    ┌──────┴──────┐
-                    │  PostgreSQL │
-                    │   Cluster   │
-                    └─────────────┘
+```mermaid
+graph TD
+    LB[Load Balancer] --> KC1[Keycloak 1]
+    LB --> KC2[Keycloak 2]
+    LB --> KC3[Keycloak 3]
+    KC1 & KC2 & KC3 --> DB[(PostgreSQL Cluster)]
 ```
 
 ### 高可用

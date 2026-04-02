@@ -1,7 +1,8 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
 // https://vitepress.dev/reference/site-config
-export default defineConfig({
+export default withMermaid(defineConfig({
   title: "Keycloak + Grafana WebAuthn",
   description: "Keycloak + Grafana + WebAuthn/Passkey 完整配置指南",
   lang: 'zh-CN',
@@ -124,4 +125,5 @@ export default defineConfig({
       provider: 'local'
     }
   }
-})
+}))
+
