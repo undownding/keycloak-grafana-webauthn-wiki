@@ -8,9 +8,7 @@
 .
 ├── docker-compose.yml          # Docker Compose 配置文件
 ├── .env.example                # 环境变量示例
-├── scripts/
-│   └── generate-certs.sh       # SSL 证书生成脚本
-├── nginx/                      # Nginx 反向代理配置
+├── nginx/                      # Nginx 反向代理配置（可选）
 │   ├── nginx.conf
 │   └── conf.d/
 │       ├── keycloak.conf
@@ -51,24 +49,20 @@ cp .env.example .env
 # 编辑 .env 文件，设置你的域名和密码
 ```
 
-### 4. 生成 SSL 证书
-
-```bash
-./scripts/generate-certs.sh
-```
-
-### 5. 启动服务
+### 4. 启动服务
 
 ```bash
 docker-compose up -d
 ```
 
-### 6. 访问服务
+### 5. 访问服务
 
-- **Keycloak**: https://keycloak.example.com:8443
+- **Keycloak**: http://localhost:8080
   - 默认账号: `admin` / `admin`
-- **Grafana**: https://grafana.example.com
+- **Grafana**: http://localhost:3000
   - 通过 Keycloak OIDC 登录
+
+> **提示**: 生产环境建议在前端部署反向代理（如 Nginx）来提供 HTTPS，Keycloak 仅监听 HTTP。
 
 ## 文档
 
@@ -90,14 +84,12 @@ bun run docs:build
 - 🛡️ **双因素认证** - 密码 + WebAuthn
 - 📊 **Grafana 集成** - 角色映射和团队同步
 - 🐳 **Docker 部署** - 一键启动
-- 🔒 **SSL/TLS** - HTTPS 安全传输
 
 ## 系统要求
 
 - Docker 20.10+
 - Docker Compose 2.0+
 - 4GB 可用内存
-- 域名（用于 HTTPS）
 
 ## 贡献
 
