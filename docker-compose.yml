@@ -25,7 +25,7 @@ services:
     image: quay.io/keycloak/keycloak:26.3.0
     container_name: keycloak
     restart: unless-stopped
-    command: start --optimized
+    command: start
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-keycloak}
@@ -36,18 +36,15 @@ services:
       KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-keycloak.example.com}
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
+      # HTTPS 由外部反向代理负责，Keycloak 仅监听 HTTP
       KC_PROXY_HEADERS: xforwarded
-      KC_HTTPS_CERTIFICATE_FILE: /opt/keycloak/conf/server.crt.pem
-      KC_HTTPS_CERTIFICATE_KEY_FILE: /opt/keycloak/conf/server.key.pem
       # WebAuthn 配置
       KC_FEATURES: web-authn,passkeys
       # 性能优化
       JAVA_OPTS_APPEND: "-XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -Djava.net.preferIPv4Stack=true"
     ports:
       - "8080:8080"
-      - "8443:8443"
     volumes:
-      - ./certs:/opt/keycloak/conf:ro
       - keycloak_data:/opt/keycloak/data
     networks:
       - keycloak-network
@@ -99,17 +96,18 @@ services:
       GF_AUTH_GENERIC_OAUTH_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-grafana}
       GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-changeme}
       GF_AUTH_GENERIC_OAUTH_SCOPES: "openid email profile offline_access roles"
-      GF_AUTH_GENERIC_OAUTH_AUTH_URL: "https://${KEYCLOAK_HOSTNAME:-keycloak.example.com}:8443/realms/${KEYCLOAK_REALM:-grafana}/protocol/openid-connect/auth"
-      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "https://${KEYCLOAK_HOSTNAME:-keycloak.example.com}:8443/realms/${KEYCLOAK_REALM:-grafana}/protocol/openid-connect/token"
-      GF_AUTH_GENERIC_OAUTH_API_URL: "https://${KEYCLOAK_HOSTNAME:-keycloak.example.com}:8443/realms/${KEYCLOAK_REALM:-grafana}/protocol/openid-connect/userinfo"
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: "https://${KEYCLOAK_HOSTNAME:-keycloak.example.com}/realms/${KEYCLOAK_REALM:-grafana}/protocol/openid-connect/auth"
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: "https://${KEYCLOAK_HOSTNAME:-keycloak.example.com}/realms/${KEYCLOAK_REALM:-grafana}/protocol/openid-connect/token"
+      GF_AUTH_GENERIC_OAUTH_API_URL: "https://${KEYCLOAK_HOSTNAME:-keycloak.example.com}/realms/${KEYCLOAK_REALM:-grafana}/protocol/openid-connect/userinfo"
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(roles[*], 'grafanaadmin') && 'GrafanaAdmin' || contains(roles[*], 'admin') && 'Admin' || contains(roles[*], 'editor') && 'Editor' || 'Viewer'"
       GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN: "true"
       GF_AUTH_GENERIC_OAUTH_USE_REFRESH_TOKEN: "true"
-      GF_AUTH_GENERIC_OAUTH_SIGNOUT_REDIRECT_URL: "https://${KEYCLOAK_HOSTNAME:-keycloak.example.com}:8443/realms/${KEYCLOAK_REALM:-grafana}/protocol/openid-connect/logout?post_logout_redirect_uri=https%3A%2F%2F${GRAFANA_HOSTNAME:-grafana.example.com}%2Flogin"
+      GF_AUTH_GENERIC_OAUTH_SIGNOUT_REDIRECT_URL: "https://${KEYCLOAK_HOSTNAME:-keycloak.example.com}/realms/${KEYCLOAK_REALM:-grafana}/protocol/openid-connect/logout?post_logout_redirect_uri=https%3A%2F%2F${GRAFANA_HOSTNAME:-grafana.example.com}%2Flogin"
       
-      # 禁用其他认证方式
-      GF_AUTH_DISABLE_LOGIN_FORM: "false"
+      # 禁用其他认证方式，强制使用 Keycloak 登录
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_AUTH_BASIC_ENABLED: "false"
     ports:
       - "3000:3000"
     volumes:
@@ -163,23 +161,23 @@ services:
       retries: 5
 
   # Nginx Reverse Proxy (可选)
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./certs:/etc/nginx/certs:ro
-    networks:
-      - keycloak-network
-      - grafana-network
-    depends_on:
-      - keycloak
-      - grafana
+#  nginx:
+#    image: nginx:alpine
+#    container_name: nginx
+#    restart: unless-stopped
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+#      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+#      - ./certs:/etc/nginx/certs:ro
+#    networks:
+#      - keycloak-network
+#      - grafana-network
+#    depends_on:
+#      - keycloak
+#      - grafana
 
 volumes:
   postgres_data:

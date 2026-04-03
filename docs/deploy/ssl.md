@@ -206,9 +206,24 @@ openssl rsa -noout -modulus -in certs/server.key.pem | openssl md5
 
 ### Keycloak
 
+**推荐方式：由外部反向代理（Nginx/Caddy/Traefik）统一终止 TLS**，Keycloak 仅监听 HTTP：
+
 ```yaml
 services:
   keycloak:
+    command: start
+    environment:
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded   # 信任反向代理传入的 X-Forwarded-* 头
+      # 无需配置证书文件
+```
+
+如果需要 Keycloak 直接终止 TLS（不使用外部代理），则配置证书：
+
+```yaml
+services:
+  keycloak:
+    command: start
     volumes:
       - ./certs/server.crt.pem:/opt/keycloak/conf/server.crt.pem:ro
       - ./certs/server.key.pem:/opt/keycloak/conf/server.key.pem:ro

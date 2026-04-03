@@ -8,15 +8,14 @@
 .
 ├── docker-compose.yml          # 主配置文件
 ├── .env                        # 环境变量
-├── certs/                      # SSL 证书
-│   ├── server.crt.pem
-│   └── server.key.pem
-├── nginx/                      # Nginx 配置
+├── nginx/                      # Nginx 配置（可选，使用内置 Nginx 时）
 │   ├── nginx.conf
 │   └── conf.d/
 └── scripts/
-    └── generate-certs.sh       # 证书生成脚本
+    └── generate-certs.sh       # 证书生成脚本（使用外部代理时不需要）
 ```
+
+> **说明**：默认配置下，HTTPS 由外部反向代理（Nginx、Caddy、Traefik 等）负责，Keycloak 和 Grafana 仅监听 HTTP。如需内置 Nginx，参见 [反向代理配置](./reverse-proxy)。
 
 ## 快速部署
 
@@ -55,17 +54,7 @@ KEYCLOAK_ADMIN_PASSWORD=your_admin_password
 KEYCLOAK_CLIENT_SECRET=your_client_secret
 ```
 
-### 3. 生成 SSL 证书
-
-```bash
-# 测试环境 - 自签名证书
-./scripts/generate-certs.sh
-
-# 生产环境 - Let's Encrypt（推荐）
-certbot certonly --standalone -d keycloak.example.com -d grafana.example.com
-```
-
-### 4. 启动服务
+### 3. 启动服务
 
 ```bash
 # 启动所有服务
@@ -78,7 +67,7 @@ docker-compose logs -f
 docker-compose logs -f keycloak
 ```
 
-### 5. 验证部署
+### 4. 验证部署
 
 ```bash
 # 检查容器状态
@@ -91,17 +80,18 @@ docker-compose exec grafana curl -f http://localhost:3000/api/health
 
 ## 服务访问
 
-| 服务 | URL | 说明 |
-|------|-----|------|
-| Keycloak | https://keycloak.example.com:8443 | 身份提供商 |
-| Grafana | `http://localhost:3000` | 监控平台（通过 Nginx 代理到 443） |
-| Nginx | https://grafana.example.com | 反向代理入口 |
+| 服务 | 容器内部地址 | 外部访问（经过反向代理） |
+|------|------------|------------------------|
+| Keycloak | `http://keycloak:8080` | `https://keycloak.example.com` |
+| Grafana | `http://grafana:3000` | `https://grafana.example.com` |
+
+> Keycloak 和 Grafana 仅暴露 HTTP，HTTPS 由你自己的反向代理统一处理。
 
 ## 初始配置
 
 ### 配置 Keycloak
 
-1. 访问 https://keycloak.example.com:8443/admin
+1. 访问 https://keycloak.example.com/admin
 2. 使用 `KEYCLOAK_ADMIN` 和 `KEYCLOAK_ADMIN_PASSWORD` 登录
 3. 创建 Realm: `grafana`
 4. 创建 Client: `grafana`

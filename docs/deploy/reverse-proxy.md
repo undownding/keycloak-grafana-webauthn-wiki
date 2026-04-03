@@ -64,7 +64,7 @@ server {
 
     # 代理配置
     location / {
-        proxy_pass https://keycloak:8443;
+        proxy_pass http://keycloak:8080;
         proxy_http_version 1.1;
         
         # 代理头
@@ -157,9 +157,9 @@ server {
 # Upstream 配置
 upstream keycloak_backend {
     least_conn;
-    server keycloak1:8443 max_fails=3 fail_timeout=30s;
-    server keycloak2:8443 max_fails=3 fail_timeout=30s;
-    server keycloak3:8443 max_fails=3 fail_timeout=30s;
+    server keycloak1:8080 max_fails=3 fail_timeout=30s;
+    server keycloak2:8080 max_fails=3 fail_timeout=30s;
+    server keycloak3:8080 max_fails=3 fail_timeout=30s;
 }
 
 upstream grafana_backend {

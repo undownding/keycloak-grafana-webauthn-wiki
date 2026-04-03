@@ -152,5 +152,6 @@ Description: Passwordless login with WebAuthn
 
 ## 下一步
 
+- [FIDO2 硬件密钥](./fido2-hardware-keys) - 使用 YubiKey 等硬件密钥
 - [Passkey 配置](./passkey) - 配置 Passkey 自动填充
 - [Grafana 集成](./grafana) - 配置 OIDC 连接

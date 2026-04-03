@@ -190,5 +190,6 @@ browser-passwordless-only
 
 ## 下一步
 
+- [FIDO2 硬件密钥](./fido2-hardware-keys) - 使用 YubiKey 等硬件密钥
 - [用户管理](./user-management) - 管理用户和凭证
 - [Grafana 集成](./grafana) - 配置 OIDC 连接

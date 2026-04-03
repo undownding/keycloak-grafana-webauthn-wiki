@@ -21,6 +21,7 @@ export default withMermaid(defineConfig({
           { text: 'Keycloak 基础配置', link: '/guide/keycloak' },
           { text: 'WebAuthn 设置', link: '/guide/webauthn' },
           { text: 'Passkey 配置', link: '/guide/passkey' },
+          { text: 'FIDO2 硬件密钥', link: '/guide/fido2-hardware-keys' },
           { text: '用户管理', link: '/guide/user-management' },
           { text: 'Grafana OIDC 配置', link: '/guide/grafana' },
           { text: '角色映射', link: '/guide/role-mapping' },
@@ -60,6 +61,7 @@ export default withMermaid(defineConfig({
             { text: '基础配置', link: '/guide/keycloak' },
             { text: 'WebAuthn 设置', link: '/guide/webauthn' },
             { text: 'Passkey 配置', link: '/guide/passkey' },
+            { text: 'FIDO2 硬件密钥', link: '/guide/fido2-hardware-keys' },
             { text: '用户管理', link: '/guide/user-management' }
           ]
         },
