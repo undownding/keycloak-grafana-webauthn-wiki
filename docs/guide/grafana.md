@@ -25,6 +25,11 @@ GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN=true
 
 # 刷新令牌
 GF_AUTH_GENERIC_OAUTH_USE_REFRESH_TOKEN=true
+
+# 登录行为
+GF_AUTH_OAUTH_AUTO_LOGIN=true
+GF_AUTH_DISABLE_LOGIN_FORM=true
+#GF_AUTH_DISABLE_SIGNOUT_MENU=false
 ```
 
 ### 配置文件方式
@@ -155,6 +160,14 @@ icon = signin
 
 ### 自动登录
 
+环境变量方式：
+
+```bash
+GF_AUTH_OAUTH_AUTO_LOGIN=true
+```
+
+配置文件方式：
+
 ```ini
 [auth]
 oauth_auto_login = true
@@ -162,11 +175,26 @@ oauth_auto_login = true
 
 ### 禁用本地登录
 
+启用 OIDC 单点登录后，可以禁用 Grafana 原生的用户名/密码登录表单，强制所有用户通过 Keycloak 认证。
+
+环境变量方式：
+
+```bash
+GF_AUTH_DISABLE_LOGIN_FORM=true
+GF_AUTH_DISABLE_SIGNOUT_MENU=false
+```
+
+配置文件方式：
+
 ```ini
 [auth]
 disable_login_form = true
 disable_signout_menu = false
 ```
+
+::: tip 提示
+`disable_login_form` 设置为 `true` 后，登录页面将不再显示用户名/密码输入框，仅保留 OAuth 登录按钮。建议配合 `oauth_auto_login = true` 使用，实现完全无感的单点登录体验。
+:::
 
 ## 验证配置
 
