@@ -1,0 +1,175 @@
+name: Sync Docs to Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Clone wiki repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.wiki.git" wiki-temp
+
+      - name: Convert and sync docs to wiki
+        run: |
+          DOCS_DIR="docs"
+          WIKI_DIR="wiki-temp"
+
+          # Clean existing wiki content except .git
+          find "$WIKI_DIR" -maxdepth 1 -type f -delete
+
+          # File mapping: source path (without .md) -> wiki page name
+          declare -A FILE_MAP=(
+            ["guide/getting-started"]="Getting-Started"
+            ["guide/architecture"]="Architecture"
+            ["guide/prerequisites"]="Prerequisites"
+            ["guide/keycloak"]="Keycloak"
+            ["guide/webauthn"]="WebAuthn"
+            ["guide/passkey"]="Passkey"
+            ["guide/fido2-hardware-keys"]="FIDO2-Hardware-Keys"
+            ["guide/user-management"]="User-Management"
+            ["guide/grafana"]="Grafana"
+            ["guide/role-mapping"]="Role-Mapping"
+            ["guide/team-sync"]="Team-Sync"
+            ["guide/security"]="Security"
+            ["guide/ha-deployment"]="HA-Deployment"
+            ["guide/backup-restore"]="Backup-Restore"
+            ["deploy/docker-compose"]="Docker-Compose"
+            ["deploy/kubernetes"]="Kubernetes"
+            ["deploy/production"]="Production"
+            ["deploy/environment"]="Environment"
+            ["deploy/ssl"]="SSL"
+            ["deploy/reverse-proxy"]="Reverse-Proxy"
+            ["troubleshooting"]="Troubleshooting"
+          )
+
+          # Build sed link-replacement script
+          SED_SCRIPT=""
+          for src in "${!FILE_MAP[@]}"; do
+            target="${FILE_MAP[$src]}"
+            SED_SCRIPT+="s|](/${src})|](${target})|g;"
+            SED_SCRIPT+="s|](./${src##*/})|](${target})|g;"
+            SED_SCRIPT+="s|](../${src})|](${target})|g;"
+          done
+          SED_SCRIPT+="s|](/troubleshooting)|](Troubleshooting)|g;"
+
+          # Strip VitePress YAML frontmatter
+          strip_frontmatter() {
+            awk 'BEGIN{s=0;d=0} /^---$/ && !d { if(!s){s=1}else{d=1}; next } d||!s { print }' "$1"
+          }
+
+          # Convert VitePress ::: containers to blockquotes / <details>
+          convert_containers() {
+            awk '
+              BEGIN { ic=0; ct="" }
+              /^::: tip/     { ic=1; ct="tip";     sub(/^::: tip ?/,"");     t=($0==""?"提示":$0); print "> **💡 "t"**"; print ">"; next }
+              /^::: warning/ { ic=1; ct="warning"; sub(/^::: warning ?/,""); t=($0==""?"注意":$0); print "> **⚠️ "t"**"; print ">"; next }
+              /^::: danger/  { ic=1; ct="danger";  sub(/^::: danger ?/,"");  t=($0==""?"危险":$0); print "> **🚫 "t"**"; print ">"; next }
+              /^::: details/ { ic=1; ct="details"; sub(/^::: details ?/,""); print "<details><summary>"$0"</summary>"; print ""; next }
+              /^:::/ && ic   { if(ct=="details"){print ""; print "</details>"}; ic=0; ct=""; next }
+              ic && ct!="details" { print "> "$0; next }
+              { print }
+            '
+          }
+
+          # Process each doc
+          for src in "${!FILE_MAP[@]}"; do
+            local_file="$DOCS_DIR/${src}.md"
+            wiki_name="${FILE_MAP[$src]}"
+            if [ ! -f "$local_file" ]; then
+              echo "WARN: $local_file not found, skipping"
+              continue
+            fi
+            echo "Processing: $src -> $wiki_name.md"
+            strip_frontmatter "$local_file" | sed "$SED_SCRIPT" | convert_containers > "$WIKI_DIR/${wiki_name}.md"
+          done
+
+          # Home.md from index.md
+          echo "Processing: index.md -> Home.md"
+          {
+            echo "# Keycloak + Grafana WebAuthn/Passkey 配置指南"
+            echo ""
+            echo "> 完整的企业级身份认证与监控系统部署文档"
+            echo ""
+            strip_frontmatter "$DOCS_DIR/index.md"
+          } | sed "$SED_SCRIPT" > "$WIKI_DIR/Home.md"
+
+          # _Sidebar.md
+          cat > "$WIKI_DIR/_Sidebar.md" << 'SIDEBAR'
+          ## 开始
+
+          - [[快速开始|Getting-Started]]
+          - [[架构概述|Architecture]]
+          - [[前置要求|Prerequisites]]
+
+          ## Keycloak 配置
+
+          - [[基础配置|Keycloak]]
+          - [[WebAuthn 设置|WebAuthn]]
+          - [[Passkey 配置|Passkey]]
+          - [[FIDO2 硬件密钥|FIDO2-Hardware-Keys]]
+          - [[用户管理|User-Management]]
+
+          ## Grafana 集成
+
+          - [[OIDC 配置|Grafana]]
+          - [[角色映射|Role-Mapping]]
+          - [[团队同步|Team-Sync]]
+
+          ## 高级
+
+          - [[安全加固|Security]]
+          - [[高可用部署|HA-Deployment]]
+          - [[备份与恢复|Backup-Restore]]
+
+          ## 部署
+
+          - [[Docker Compose|Docker-Compose]]
+          - [[Kubernetes|Kubernetes]]
+          - [[生产环境|Production]]
+
+          ## 配置
+
+          - [[环境变量|Environment]]
+          - [[SSL 证书|SSL]]
+          - [[反向代理|Reverse-Proxy]]
+
+          ## 其他
+
+          - [[故障排除|Troubleshooting]]
+          SIDEBAR
+
+          # _Footer.md
+          cat > "$WIKI_DIR/_Footer.md" << 'FOOTER'
+          ---
+          Released under the MIT License. | [GitHub 仓库](https://github.com/undownding/keycloak-grafana-webauthn-wiki) | [在线文档](https://undownding.github.io/keycloak-grafana-webauthn-wiki/)
+          FOOTER
+
+          echo "Done! $(ls "$WIKI_DIR"/*.md | wc -l) wiki pages generated."
+
+      - name: Push to wiki
+        run: |
+          cd wiki-temp
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to push."
+          else
+            git commit -m "docs: sync from main @ ${{ github.sha }}"
+            git push
+          fi
