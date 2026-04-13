@@ -162,7 +162,7 @@ icon = signin
 
 环境变量方式：
 
-```bash
+```dotenv
 GF_AUTH_OAUTH_AUTO_LOGIN=true
 ```
 
@@ -179,7 +179,7 @@ oauth_auto_login = true
 
 环境变量方式：
 
-```bash
+```dotenv
 GF_AUTH_DISABLE_LOGIN_FORM=true
 GF_AUTH_DISABLE_SIGNOUT_MENU=false
 ```
