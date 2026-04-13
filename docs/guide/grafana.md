@@ -6,7 +6,7 @@
 
 ### 环境变量方式
 
-```bash
+```dotenv
 # OIDC 基础配置
 GF_AUTH_GENERIC_OAUTH_ENABLED=true
 GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
